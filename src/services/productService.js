@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'eshop-products'
+import { getAllProducts, saveProduct, deleteProductById, deleteProductsByCategory, subscribeToProducts } from './firebaseService.js'
 
 function normalizeSlug(value) {
   return String(value)
@@ -50,59 +50,79 @@ const initialProducts = [
   }
 ]
 
-function loadProducts() {
-  const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(initialProducts))
-    return [...initialProducts]
+let remoteInitializationPromise = null
+
+async function ensureRemoteProducts() {
+  if (remoteInitializationPromise) {
+    return remoteInitializationPromise
   }
 
-  try {
-    const products = JSON.parse(raw)
-    return Array.isArray(products) ? products : [...initialProducts]
-  } catch (error) {
-    console.error('Invalid products stored in localStorage:', error)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(initialProducts))
-    return [...initialProducts]
-  }
-}
+  remoteInitializationPromise = (async () => {
+    const products = await getAllProducts()
+    if (products && products.length > 0) {
+      return
+    }
 
-function saveProducts(products) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(products))
+    await Promise.all(initialProducts.map(product => saveProduct(product)))
+  })()
+
+  return remoteInitializationPromise
 }
 
 export async function addProduct(productData) {
-  const products = loadProducts()
+  await ensureRemoteProducts()
+
+  const imageUrl = String(productData.imageUrl || '').trim()
+  if (!imageUrl) {
+    throw new Error('Product image URL is required.')
+  }
+
+  if (!/^https:\/\/.*cloudinary\.com\//.test(imageUrl)) {
+    throw new Error('Product image must be uploaded to Cloudinary.')
+  }
+
   const newProduct = {
     id: `p_${Date.now()}`,
     sellerId: productData.sellerId,
     name: productData.name.trim(),
     description: productData.description.trim(),
     price: Number(productData.price) || 0,
-    image_url: productData.imageUrl,
+    image_url: imageUrl,
     category: productData.category.trim(),
     category_id: normalizeSlug(productData.category),
     category_slug: normalizeSlug(productData.category),
     createdAt: new Date().toISOString(),
     status: 'active'
   }
-  const updatedProducts = [newProduct, ...products]
-  saveProducts(updatedProducts)
+
+  await saveProduct(newProduct)
   return newProduct
 }
 
 export async function fetchProducts() {
-  return loadProducts().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  await ensureRemoteProducts()
+  const products = await getAllProducts()
+  return products.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 }
 
 export async function fetchProductsByCategory(categoryId) {
+  await ensureRemoteProducts()
   const normalized = normalizeSlug(categoryId)
-  const products = loadProducts()
+  const products = await getAllProducts()
   return products.filter(product => product.category_id === normalized || product.category_slug === normalized)
 }
 
+export async function deleteProduct(productId) {
+  await deleteProductById(productId)
+}
+
+export async function deleteCategory(categoryId) {
+  await deleteProductsByCategory(categoryId)
+}
+
 export async function fetchCategories() {
-  const products = loadProducts()
+  await ensureRemoteProducts()
+  const products = await getAllProducts()
   const categories = []
   const seen = new Set()
 
@@ -121,3 +141,5 @@ export async function fetchCategories() {
 
   return categories.sort((a, b) => a.name.localeCompare(b.name))
 }
+
+export { subscribeToProducts }

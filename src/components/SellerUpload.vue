@@ -1,8 +1,12 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useProductsStore } from '/src/stores/products.js'
+import { formatPrice } from '/src/utils/priceFormatter.js'
+import { uploadImageToCloudinary } from '/src/services/cloudinaryService.js'
 
 const productsStore = useProductsStore()
+const products = computed(() => productsStore.products)
+const categories = computed(() => productsStore.categories)
 
 const name = ref('')
 const description = ref('')
@@ -29,6 +33,30 @@ const validateUploadPassword = () => {
     loginError.value = 'Incorrect password. Please try again.'
   }
 }
+
+const removeProduct = async (productId) => {
+  if (!confirm('Delete this product?')) return
+  try {
+    await productsStore.deleteProduct(productId)
+  } catch (error) {
+    errorMessage.value = error.message || 'Unable to delete product.'
+  }
+}
+
+const removeCategory = async (categoryId) => {
+  if (!confirm('Delete this category and all its products?')) return
+  try {
+    await productsStore.deleteCategory(categoryId)
+  } catch (error) {
+    errorMessage.value = error.message || 'Unable to delete category.'
+  }
+}
+
+onMounted(() => {
+  productsStore.initSyncListener()
+  productsStore.fetchProducts()
+  productsStore.fetchCategories()
+})
 
 function resetForm() {
   name.value = ''
@@ -67,26 +95,18 @@ function handleImageChange(event) {
   errorMessage.value = ''
 }
 
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
-
 async function uploadImageFile() {
   if (!imageFile.value) {
     throw new Error('Please select an image to upload.')
   }
 
   const file = imageFile.value
-  uploadProgress.value = 0
+  uploadProgress.value = 10
 
-  const imageDataUrl = await readFileAsDataUrl(file)
+  const imageUrl = await uploadImageToCloudinary(file)
   uploadProgress.value = 100
-  return imageDataUrl
+
+  return imageUrl
 }
 
 async function submitProduct() {
@@ -113,6 +133,7 @@ async function submitProduct() {
 
     successMessage.value = 'Product saved successfully. Customers can now view it on the home page.'
     resetForm()
+    await productsStore.fetchProducts()
     await productsStore.fetchCategories()
   } catch (error) {
     console.error('Seller product upload failed:', error)
@@ -125,11 +146,11 @@ async function submitProduct() {
 </script>
 
 <template>
-  <section class="min-h-screen bg-slate-950 py-16 px-4 text-white">
+  <section class="min-h-screen bg-slate-950 pt-28 md:pt-16 pb-16 px-4 text-white">
     <div v-if="!uploadAccessGranted" class="mx-auto max-w-2xl rounded-3xl border border-white/10 bg-slate-900/80 p-8 shadow-2xl shadow-black/30 backdrop-blur-xl">
       <div class="mb-10 text-center">
         <div class="flex justify-center mb-6">
-          <img src="/1000173935.jpg" alt="Godob logo" class="h-24 w-auto rounded-full border border-white/10 shadow-lg" />
+          <img src="/1000173935.jpg" alt="Godob logo" class="h-20 sm:h-24 w-auto rounded-full border border-white/10 shadow-lg" />
         </div>
         <p class="text-sm uppercase tracking-[0.3em] text-rose-300">Seller Access</p>
         <h1 class="mt-4 text-4xl font-semibold text-white">Please pay to be a seller</h1>
@@ -212,6 +233,53 @@ async function submitProduct() {
 
         <div v-if="successMessage" class="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-100">{{ successMessage }}</div>
         <div v-if="errorMessage" class="rounded-3xl border border-rose-500/30 bg-rose-500/10 p-4 text-rose-100">{{ errorMessage }}</div>
+      </div>
+
+      <div class="mt-12 space-y-12">
+        <div>
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <div>
+              <h2 class="text-2xl font-semibold text-white">Seller Products</h2>
+              <p class="text-sm text-slate-400">Delete products that should no longer appear in the store.</p>
+            </div>
+            <span class="text-sm text-slate-400">{{ products.length }} products</span>
+          </div>
+
+          <div class="space-y-3">
+            <div v-if="products.length === 0" class="rounded-3xl border border-slate-700 bg-slate-950/80 p-4 text-slate-400">No products available.</div>
+            <div v-for="product in products" :key="product.id" class="rounded-3xl border border-slate-700 bg-slate-950/80 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div class="flex items-start gap-3">
+                <img :src="product.image_url || '/src/components/images/placeholder.png'" :alt="product.name" class="h-20 w-20 rounded-3xl object-cover border border-slate-700" />
+                <div>
+                  <p class="font-semibold text-white">{{ product.name }}</p>
+                  <p class="text-slate-400 text-sm">{{ product.category }} • Tsh {{ formatPrice(product.price) }}</p>
+                </div>
+              </div>
+              <button @click="removeProduct(product.id)" type="button" class="rounded-3xl bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-600">Delete product</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <div>
+              <h2 class="text-2xl font-semibold text-white">Seller Categories</h2>
+              <p class="text-sm text-slate-400">Delete categories and remove all their associated products.</p>
+            </div>
+            <span class="text-sm text-slate-400">{{ categories.length }} categories</span>
+          </div>
+
+          <div class="space-y-3">
+            <div v-if="categories.length === 0" class="rounded-3xl border border-slate-700 bg-slate-950/80 p-4 text-slate-400">No categories available.</div>
+            <div v-for="category in categories" :key="category.id" class="rounded-3xl border border-slate-700 bg-slate-950/80 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p class="font-semibold text-white">{{ category.name }}</p>
+                <p class="text-slate-400 text-sm">Slug: {{ category.slug }}</p>
+              </div>
+              <button @click="removeCategory(category.slug)" type="button" class="rounded-3xl bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-600">Delete category</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </section>

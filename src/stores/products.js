@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import * as productService from '/src/services/productService.js'
 
+let storageListenerInitialized = false
+
 export const useProductsStore = defineStore('products', {
   state: () => ({
     products: [],
@@ -81,11 +83,54 @@ export const useProductsStore = defineStore('products', {
       }
     },
 
+    async deleteProduct(productId) {
+      this.loading = true
+      this.error = null
+      try {
+        await productService.deleteProduct(productId)
+        await this.refreshData()
+      } catch (error) {
+        this.error = 'Failed to delete product'
+        console.error('Error deleting product:', error)
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async deleteCategory(categoryId) {
+      this.loading = true
+      this.error = null
+      try {
+        await productService.deleteCategory(categoryId)
+        await this.refreshData()
+      } catch (error) {
+        this.error = 'Failed to delete category'
+        console.error('Error deleting category:', error)
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
     async refreshData() {
       await Promise.all([
         this.fetchProducts(),
         this.fetchCategories()
       ])
+    },
+
+    initSyncListener() {
+      if (typeof window === 'undefined' || storageListenerInitialized) return
+      storageListenerInitialized = true
+
+      const unsubscribe = productService.subscribeToProducts(async () => {
+        await this.refreshData()
+      })
+
+      window.addEventListener('beforeunload', () => {
+        unsubscribe()
+      })
     }
   }
 })

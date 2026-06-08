@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useProductsStore } from '../stores/products.js'
+import { formatPrice } from '/src/utils/priceFormatter.js'
 
 const productsStore = useProductsStore()
 const selectedProduct = ref(null)
@@ -43,6 +44,7 @@ function closeContactModal() {
 }
 
 onMounted(async () => {
+  productsStore.initSyncListener()
   // Fetch data if not already loaded
   if (products.value.length === 0) {
     await productsStore.fetchProducts()
@@ -79,7 +81,7 @@ onMounted(async () => {
           <h3 class="text-rose-400 font-semibold text-base mb-1">{{ product.name }}</h3>
           <p class="text-black text-sm mb-2">{{ product.description }}</p>
           <div class="flex justify-between items-center">
-            <span class="text-rose-400 font-bold text-sm">Tsh {{ product.price }}</span>
+            <span class="text-rose-400 font-bold text-sm">Tsh {{ formatPrice(product.price) }}</span>
             <div class="flex gap-1">
               <button @click="showDetails(product)" class="bg-pink-400 hover:bg-pink-500 text-white px-2 py-1 rounded-md transition duration-300 text-sm">
                 Details
@@ -116,7 +118,7 @@ onMounted(async () => {
           class="w-full h-48 object-contain mb-3 rounded"
         >
         <p class="text-black mb-3 text-sm">{{ selectedProduct.description }}</p>
-        <p class="text-rose-400 font-bold text-lg mb-3">Tsh {{ selectedProduct.price }}</p>
+        <p class="text-rose-400 font-bold text-lg mb-3">Tsh {{ formatPrice(selectedProduct.price) }}</p>
         <button @click="selectedProduct = null" class="bg-rose-400 hover:bg-rose-500 text-white px-3 py-1.5 rounded-md transition duration-300 text-sm">
           Close
         </button>
