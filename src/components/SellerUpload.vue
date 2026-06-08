@@ -13,8 +13,22 @@ const uploadProgress = ref(0)
 const category = ref('')
 const errorMessage = ref('')
 const successMessage = ref('')
+const loginError = ref('')
+const passwordInput = ref('')
+const uploadAccessGranted = ref(sessionStorage.getItem('uploadAccess') === 'true')
 const loading = ref(false)
 const maxImageSize = 500 * 1024 // 500 KB
+const accessPassword = 'GodobAdminTeam2026'
+
+const validateUploadPassword = () => {
+  if (passwordInput.value === accessPassword) {
+    uploadAccessGranted.value = true
+    loginError.value = ''
+    sessionStorage.setItem('uploadAccess', 'true')
+  } else {
+    loginError.value = 'Incorrect password. Please try again.'
+  }
+}
 
 function resetForm() {
   name.value = ''
@@ -112,7 +126,31 @@ async function submitProduct() {
 
 <template>
   <section class="min-h-screen bg-slate-950 py-16 px-4 text-white">
-    <div class="mx-auto max-w-4xl rounded-3xl border border-white/10 bg-slate-900/80 p-8 shadow-2xl shadow-black/30 backdrop-blur-xl">
+    <div v-if="!uploadAccessGranted" class="mx-auto max-w-2xl rounded-3xl border border-white/10 bg-slate-900/80 p-8 shadow-2xl shadow-black/30 backdrop-blur-xl">
+      <div class="mb-10 text-center">
+        <div class="flex justify-center mb-6">
+          <img src="/1000173935.jpg" alt="Godob logo" class="h-24 w-auto rounded-full border border-white/10 shadow-lg" />
+        </div>
+        <p class="text-sm uppercase tracking-[0.3em] text-rose-300">Seller Access</p>
+        <h1 class="mt-4 text-4xl font-semibold text-white">Please pay to be a seller</h1>
+        <p class="mt-3 max-w-2xl mx-auto text-slate-300">Thank you for choosing godob. Enter the password below to continue to the product upload area.</p>
+      </div>
+      <div class="space-y-6">
+        <label class="block space-y-2 text-sm text-slate-200">
+          <span>Password</span>
+          <input type="password" v-model="passwordInput" placeholder="Enter password" class="w-full rounded-3xl border border-slate-700 bg-slate-950/80 px-5 py-4 text-white outline-none transition focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20" />
+        </label>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <button @click="validateUploadPassword" type="button" class="inline-flex items-center justify-center rounded-3xl bg-rose-500 px-6 py-4 text-base font-semibold text-white transition hover:bg-rose-600">
+            Enter
+          </button>
+          <p class="text-xs text-slate-400">Password required to enter the upload area.</p>
+        </div>
+        <p v-if="loginError" class="text-rose-300 text-sm">{{ loginError }}</p>
+      </div>
+    </div>
+
+    <div v-else class="mx-auto max-w-4xl rounded-3xl border border-white/10 bg-slate-900/80 p-8 shadow-2xl shadow-black/30 backdrop-blur-xl">
       <div class="mb-10 text-center">
         <p class="text-sm uppercase tracking-[0.3em] text-rose-300">Upload Product</p>
         <h1 class="mt-4 text-4xl font-semibold text-white">Add a Product</h1>

@@ -8,7 +8,7 @@ const route = useRoute()
 const productsStore = useProductsStore()
 const showMobileCategories = ref(false)
 const activeSection = ref('Homie') // Default active section
-
+const isSeller = ref(false)
 const categories = computed(() => productsStore.categories)
 
 // Function to handle home navigation
@@ -180,7 +180,7 @@ const isCategoryActive = (categorySlug) => {
         
         <div class="flex items-center space-x-6">
           <div class="hidden md:flex items-center gap-4">
-            <router-link to="/seller/upload" class="rounded-full border border-rose-500 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-100">Upload Product</router-link>
+            <button @click="router.push('/seller/upload')" type="button" class="rounded-full border border-rose-500 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-100">Upload Product</button>
           </div>
           <div class="flex flex-col items-center">
             <span class="text-gray-700 font-medium text-sm uppercase tracking-wide">Call Us Now</span>
