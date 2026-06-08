@@ -34,21 +34,52 @@ const validateUploadPassword = () => {
   }
 }
 
-const removeProduct = async (productId) => {
-  if (!confirm('Delete this product?')) return
-  try {
-    await productsStore.deleteProduct(productId)
-  } catch (error) {
-    errorMessage.value = error.message || 'Unable to delete product.'
-  }
+const deleteModalOpen = ref(false)
+const deleteTargetType = ref('')
+const deleteTargetId = ref('')
+const deleteTargetName = ref('')
+const deleteModalMessage = ref('')
+const deleteLoading = ref(false)
+
+const openDeleteModal = (type, id, name) => {
+  deleteTargetType.value = type
+  deleteTargetId.value = id
+  deleteTargetName.value = name
+  deleteModalMessage.value =
+    type === 'product'
+      ? `Delete the product "${name}"? This action cannot be undone.`
+      : `Delete the category "${name}" and all its products? This action cannot be undone.`
+  deleteModalOpen.value = true
+  errorMessage.value = ''
 }
 
-const removeCategory = async (categoryId) => {
-  if (!confirm('Delete this category and all its products?')) return
+const cancelDelete = () => {
+  deleteModalOpen.value = false
+  deleteTargetType.value = ''
+  deleteTargetId.value = ''
+  deleteTargetName.value = ''
+  deleteModalMessage.value = ''
+  deleteLoading.value = false
+}
+
+const executeDelete = async () => {
+  if (!deleteTargetType.value || !deleteTargetId.value) return
+  deleteLoading.value = true
+  errorMessage.value = ''
+
   try {
-    await productsStore.deleteCategory(categoryId)
+    if (deleteTargetType.value === 'product') {
+      await productsStore.deleteProduct(deleteTargetId.value)
+    } else {
+      await productsStore.deleteCategory(deleteTargetId.value)
+    }
+
+    await Promise.all([productsStore.fetchProducts(), productsStore.fetchCategories()])
+    cancelDelete()
   } catch (error) {
-    errorMessage.value = error.message || 'Unable to delete category.'
+    errorMessage.value = error.message || `Unable to delete ${deleteTargetType.value}.`
+  } finally {
+    deleteLoading.value = false
   }
 }
 
@@ -246,16 +277,32 @@ async function submitProduct() {
           </div>
 
           <div class="space-y-3">
-            <div v-if="products.length === 0" class="rounded-3xl border border-slate-700 bg-slate-950/80 p-4 text-slate-400">No products available.</div>
-            <div v-for="product in products" :key="product.id" class="rounded-3xl border border-slate-700 bg-slate-950/80 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div class="flex items-start gap-3">
-                <img :src="product.image_url || '/src/components/images/placeholder.png'" :alt="product.name" class="h-20 w-20 rounded-3xl object-cover border border-slate-700" />
-                <div>
-                  <p class="font-semibold text-white">{{ product.name }}</p>
-                  <p class="text-slate-400 text-sm">{{ product.category }} • Tsh {{ formatPrice(product.price) }}</p>
+            <!-- Skeleton Loader -->
+            <div v-if="loading" class="space-y-3">
+              <div v-for="n in 3" :key="n" class="rounded-3xl border border-slate-700 bg-slate-950/80 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-pulse">
+                <div class="flex items-start gap-3 w-full">
+                  <div class="h-20 w-20 rounded-3xl bg-slate-700 flex-shrink-0"></div>
+                  <div class="flex-grow space-y-2">
+                    <div class="h-4 bg-slate-700 rounded w-3/4"></div>
+                    <div class="h-3 bg-slate-700 rounded w-1/2"></div>
+                  </div>
                 </div>
+                <div class="h-10 bg-slate-700 rounded-3xl w-32 flex-shrink-0"></div>
               </div>
-              <button @click="removeProduct(product.id)" type="button" class="rounded-3xl bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-600">Delete product</button>
+            </div>
+            <!-- Products List -->
+            <div v-else>
+              <div v-if="products.length === 0" class="rounded-3xl border border-slate-700 bg-slate-950/80 p-4 text-slate-400">No products available.</div>
+              <div v-for="product in products" :key="product.id" class="rounded-3xl border border-slate-700 bg-slate-950/80 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div class="flex items-start gap-3">
+                  <img :src="product.image_url || '/src/components/images/placeholder.png'" :alt="product.name" class="h-20 w-20 rounded-3xl object-cover border border-slate-700" />
+                  <div>
+                    <p class="font-semibold text-white">{{ product.name }}</p>
+                    <p class="text-slate-400 text-sm">{{ product.category }} • Tsh {{ formatPrice(product.price) }}</p>
+                  </div>
+                </div>
+                <button @click="openDeleteModal('product', product.id, product.name)" type="button" class="rounded-3xl bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-600">Delete product</button>
+              </div>
             </div>
           </div>
         </div>
@@ -270,15 +317,48 @@ async function submitProduct() {
           </div>
 
           <div class="space-y-3">
-            <div v-if="categories.length === 0" class="rounded-3xl border border-slate-700 bg-slate-950/80 p-4 text-slate-400">No categories available.</div>
-            <div v-for="category in categories" :key="category.id" class="rounded-3xl border border-slate-700 bg-slate-950/80 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <p class="font-semibold text-white">{{ category.name }}</p>
-                <p class="text-slate-400 text-sm">Slug: {{ category.slug }}</p>
+            <!-- Skeleton Loader -->
+            <div v-if="loading" class="space-y-3">
+              <div v-for="n in 2" :key="n" class="rounded-3xl border border-slate-700 bg-slate-950/80 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-pulse">
+                <div class="flex-grow space-y-2">
+                  <div class="h-4 bg-slate-700 rounded w-1/2"></div>
+                  <div class="h-3 bg-slate-700 rounded w-1/3"></div>
+                </div>
+                <div class="h-10 bg-slate-700 rounded-3xl w-32 flex-shrink-0"></div>
               </div>
-              <button @click="removeCategory(category.slug)" type="button" class="rounded-3xl bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-600">Delete category</button>
+            </div>
+            <!-- Categories List -->
+            <div v-else>
+              <div v-if="categories.length === 0" class="rounded-3xl border border-slate-700 bg-slate-950/80 p-4 text-slate-400">No categories available.</div>
+              <div v-for="category in categories" :key="category.id" class="rounded-3xl border border-slate-700 bg-slate-950/80 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <p class="font-semibold text-white">{{ category.name }}</p>
+                  <p class="text-slate-400 text-sm">Slug: {{ category.slug }}</p>
+                </div>
+                <button @click="openDeleteModal('category', category.slug, category.name)" type="button" class="rounded-3xl bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-600">Delete category</button>
+              </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="deleteModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6">
+      <div class="w-full max-w-xl rounded-[2rem] border border-white/10 bg-slate-900/95 p-8 shadow-2xl shadow-black/40 backdrop-blur-xl">
+        <div class="mb-6">
+          <p class="text-sm uppercase tracking-[0.3em] text-rose-300">Confirm action</p>
+          <h2 class="mt-4 text-3xl font-semibold text-white">Are you sure?</h2>
+          <p class="mt-3 text-slate-300">{{ deleteModalMessage }}</p>
+        </div>
+
+        <div v-if="errorMessage" class="mb-4 rounded-3xl border border-rose-500/30 bg-rose-500/10 p-4 text-rose-100">{{ errorMessage }}</div>
+
+        <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+          <button @click="cancelDelete" type="button" class="rounded-3xl border border-slate-700 bg-slate-950/90 px-6 py-3 text-sm font-semibold text-white transition hover:border-rose-400 hover:text-rose-300">Cancel</button>
+          <button @click="executeDelete" type="button" :disabled="deleteLoading" class="rounded-3xl bg-rose-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60">
+            <span v-if="!deleteLoading">Delete</span>
+            <span v-else>Deleting...</span>
+          </button>
         </div>
       </div>
     </div>

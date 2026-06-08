@@ -184,7 +184,7 @@ const isCategoryActive = (categorySlug) => {
           </div>
           <div class="flex flex-col items-center">
             <span class="text-gray-700 font-medium text-sm uppercase tracking-wide">Call Us Now</span>
-            <a href="tel:+255713131537" class="text-rose-500 font-bold text-lg hover:text-rose-600 transition-colors duration-300">+255 713 131 537</a>
+            <a href="tel:+255710629596" class="text-rose-500 font-bold text-lg hover:text-rose-600 transition-colors duration-300">+255 710 629 596</a>
           </div>
         </div>
       </div>
@@ -203,7 +203,7 @@ const isCategoryActive = (categorySlug) => {
           </button>
           <div class="flex flex-col">
             <span class="text-gray-700 text-sm font-medium uppercase">Call Us Now</span>
-            <a href="tel:+255713131537" class="text-rose-500 font-bold text-base">+255 713 131 537</a>
+            <a href="tel:+255710629596" class="text-rose-500 font-bold text-base">+255 710 629 596</a>
           </div>
         </div>
         

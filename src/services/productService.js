@@ -1,4 +1,7 @@
 import { getAllProducts, saveProduct, deleteProductById, deleteProductsByCategory, subscribeToProducts } from './firebaseService.js'
+import { deleteImageFromCloudinary } from './cloudinaryService.js'
+
+const ENABLE_DEMO_PRODUCTS = import.meta.env.VITE_ENABLE_DEMO_PRODUCTS === 'true'
 
 function normalizeSlug(value) {
   return String(value)
@@ -57,6 +60,10 @@ async function ensureRemoteProducts() {
     return remoteInitializationPromise
   }
 
+  if (!ENABLE_DEMO_PRODUCTS) {
+    return
+  }
+
   remoteInitializationPromise = (async () => {
     const products = await getAllProducts()
     if (products && products.length > 0) {
@@ -113,11 +120,35 @@ export async function fetchProductsByCategory(categoryId) {
 }
 
 export async function deleteProduct(productId) {
+  const products = await getAllProducts()
+  const product = products.find(item => item.id === productId)
+
+  if (product?.image_url) {
+    try {
+      await deleteImageFromCloudinary(product.image_url)
+    } catch (error) {
+      console.warn('Cloudinary cleanup failed for product:', productId, error)
+    }
+  }
+
   await deleteProductById(productId)
 }
 
 export async function deleteCategory(categoryId) {
-  await deleteProductsByCategory(categoryId)
+  const products = await getAllProducts()
+  const normalized = normalizeSlug(categoryId)
+  const toDelete = products.filter(product => product.category_id === normalized || product.category_slug === normalized)
+
+  await Promise.all(toDelete.map(async product => {
+    if (product?.image_url) {
+      try {
+        await deleteImageFromCloudinary(product.image_url)
+      } catch (error) {
+        console.warn('Cloudinary cleanup failed for category product:', product.id, error)
+      }
+    }
+    return deleteProductById(product.id)
+  }))
 }
 
 export async function fetchCategories() {

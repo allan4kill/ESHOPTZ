@@ -14,9 +14,9 @@ const loading = computed(() => productsStore.loading)
 const getWhatsAppLink = computed(() => {
   if (selectedProduct.value) {
     const message = `Hello, I'm interested in buying ${selectedProduct.value.name} (ID: ${selectedProduct.value.id}) for Tsh ${selectedProduct.value.price}`;
-    return `https://wa.me/+255615819837?text=${encodeURIComponent(message)}`;
+    return `https://wa.me/+255710629596?text=${encodeURIComponent(message)}`;
   }
-  return 'https://wa.me/+255615819837';
+  return 'https://wa.me/+255710629596';
 })
 
 const getEmailLink = computed(() => {
@@ -56,10 +56,23 @@ onMounted(async () => {
   <div class="container mx-auto p-4">
     <h1 class="text-5xl font-bold text-black mb-6 text-center">Products</h1>
     
-    <!-- Loading State -->
-    <div v-if="loading" class="text-center py-8">
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-rose-400"></div>
-      <p class="mt-2 text-gray-600">Loading products...</p>
+    <!-- Skeleton Loader -->
+    <div v-if="loading" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+      <div v-for="n in 8" :key="n" class="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
+        <div class="w-full h-48 bg-gray-300"></div>
+        <div class="p-3 space-y-3">
+          <div class="h-4 bg-gray-300 rounded w-3/4"></div>
+          <div class="h-3 bg-gray-300 rounded w-full"></div>
+          <div class="h-3 bg-gray-300 rounded w-2/3"></div>
+          <div class="flex justify-between items-center">
+            <div class="h-4 bg-gray-300 rounded w-1/3"></div>
+            <div class="flex gap-1">
+              <div class="h-8 bg-gray-300 rounded w-12"></div>
+              <div class="h-8 bg-gray-300 rounded w-12"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Products Grid -->
@@ -132,15 +145,15 @@ onMounted(async () => {
         <div class="space-y-4">
           <a :href="getWhatsAppLink" target="_blank" class="flex items-center gap-2 text-green-600 hover:text-green-700">
             <i class="fas fa-whatsapp text-xl"></i>
-            WhatsApp: +255 615 819 837
+            WhatsApp: +255 710 629 596
           </a>
           <a :href="getEmailLink" class="flex items-center gap-2 text-blue-600 hover:text-blue-700">
             <i class="fas fa-envelope text-xl"></i>
             Email: fantastchacker@gmail.com
           </a>
-          <a href="tel:+255 713 131 537" class="flex items-center gap-2 text-gray-600 hover:text-gray-700">
+          <a href="tel:+255710629596" class="flex items-center gap-2 text-gray-600 hover:text-gray-700">
             <i class="fas fa-phone text-xl"></i>
-            Phone: +255 713 131 537
+            Phone: +255 710 629 596
           </a>
         </div>
         <button @click="closeContactModal" class="mt-4 bg-rose-400 hover:bg-rose-500 text-white px-3 py-1.5 rounded-md transition duration-300 text-sm">
