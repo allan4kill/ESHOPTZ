@@ -6,6 +6,7 @@ import { formatPrice } from '/src/utils/priceFormatter.js'
 const productsStore = useProductsStore()
 const selectedProduct = ref(null)
 const showContact = ref(false)
+const zoomLevel = ref(1)
 
 // Use store data
 const products = computed(() => productsStore.products)
@@ -31,6 +32,7 @@ const getEmailLink = computed(() => {
 function showDetails(product) {
   selectedProduct.value = product;
   showContact.value = false;
+  zoomLevel.value = 1;
 }
 
 function showContactModal(product) {
@@ -41,6 +43,32 @@ function showContactModal(product) {
 function closeContactModal() {
   showContact.value = false;
   selectedProduct.value = null;
+  zoomLevel.value = 1;
+}
+
+function zoomInImage() {
+  zoomLevel.value = Math.min(zoomLevel.value + 0.25, 3)
+}
+
+function zoomOutImage() {
+  zoomLevel.value = Math.max(zoomLevel.value - 0.25, 1)
+}
+
+function resetZoom() {
+  zoomLevel.value = 1
+}
+
+function handleImageWheel(event) {
+  if (event.deltaY < 0) {
+    zoomInImage()
+  } else {
+    zoomOutImage()
+  }
+}
+
+function closeDetailsModal() {
+  selectedProduct.value = null
+  zoomLevel.value = 1
 }
 
 onMounted(async () => {
@@ -122,19 +150,39 @@ onMounted(async () => {
 
     <!-- Modals remain the same -->
     <!-- Product Details Modal -->
-    <div v-if="selectedProduct && !showContact" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white p-4 rounded-lg max-w-sm w-full">
-        <h2 class="text-xl font-bold text-rose-400 mb-3">{{ selectedProduct.name }}</h2>
-        <img 
-          :src="selectedProduct.image_url || '/src/components/images/placeholder.png'" 
-          :alt="selectedProduct.name" 
-          class="w-full h-48 object-contain mb-3 rounded"
-        >
-        <p class="text-black mb-3 text-sm">{{ selectedProduct.description }}</p>
-        <p class="text-rose-400 font-bold text-lg mb-3">Tsh {{ formatPrice(selectedProduct.price) }}</p>
-        <button @click="selectedProduct = null" class="bg-rose-400 hover:bg-rose-500 text-white px-3 py-1.5 rounded-md transition duration-300 text-sm">
-          Close
-        </button>
+    <div v-if="selectedProduct && !showContact" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-3 sm:p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+        <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3 sm:px-6">
+          <h2 class="text-lg sm:text-xl font-bold text-rose-400">{{ selectedProduct.name }}</h2>
+          <button @click="closeDetailsModal" class="text-gray-500 hover:text-rose-500 text-xl leading-none">
+            ×
+          </button>
+        </div>
+        <div class="p-4 sm:p-6">
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <button @click="zoomOutImage" class="rounded-md border border-gray-300 px-2.5 py-1 text-sm hover:bg-gray-100">−</button>
+              <button @click="resetZoom" class="rounded-md border border-gray-300 px-2.5 py-1 text-sm hover:bg-gray-100">Reset</button>
+              <button @click="zoomInImage" class="rounded-md border border-gray-300 px-2.5 py-1 text-sm hover:bg-gray-100">+</button>
+            </div>
+            <span class="text-sm text-gray-500">{{ zoomLevel.toFixed(2) }}x</span>
+          </div>
+          <div class="mb-4 flex items-center justify-center overflow-auto rounded-xl bg-gray-50 p-2 sm:p-3">
+            <img 
+              :src="selectedProduct.image_url || '/src/components/images/placeholder.png'" 
+              :alt="selectedProduct.name" 
+              :style="{ transform: `scale(${zoomLevel})` }"
+              class="w-full h-[280px] sm:h-[420px] object-contain rounded-lg transition-transform duration-300 cursor-zoom-in"
+              @wheel.prevent="handleImageWheel"
+              @dblclick="zoomLevel === 1 ? zoomInImage() : resetZoom()"
+            >
+          </div>
+          <p class="text-black mb-3 text-sm sm:text-base">{{ selectedProduct.description }}</p>
+          <p class="text-rose-400 font-bold text-lg mb-4">Tsh {{ formatPrice(selectedProduct.price) }}</p>
+          <button @click="closeDetailsModal" class="bg-rose-400 hover:bg-rose-500 text-white px-3 py-1.5 rounded-md transition duration-300 text-sm">
+            Close
+          </button>
+        </div>
       </div>
     </div>
 
