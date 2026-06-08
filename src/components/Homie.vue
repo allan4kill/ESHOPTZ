@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router'
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 import Nav from '/src/components/Navbar/Nav.vue';
@@ -11,6 +12,15 @@ import Shoes from '/src/components/images/Shoes.png';
 const images = [Shirt1, Hphone, Shirt2, Shoes];
 const currentIndex = ref(0);
 let slideInterval = null;
+const router = useRouter()
+
+const goToAllCategories = async () => {
+  try {
+    await router.push({ name: 'Category_Page' })
+  } catch (error) {
+    window.location.href = '/Category'
+  }
+}
 
 // Auto-slide functionality
 const startAutoSlide = () => {
@@ -66,7 +76,7 @@ onUnmounted(() => {
                 <!-- Mobile Layout -->
                 <div class="block lg:hidden">
                     <!-- Mobile Hero Content -->
-                    <div class="flex flex-col items-center text-center mt-8 mb-8 px-4">
+                    <div class="relative z-30 flex flex-col items-center text-center mt-8 mb-8 px-4">
                         <h2 
                             class="text-2xl sm:text-3xl font-light text-gray-800 tracking-wider mb-2"
                             data-aos="fade-down"
@@ -100,9 +110,9 @@ onUnmounted(() => {
                         </div>
                                                 
                         <div>
-                            <p class="text-lg sm:text-xl font-semibold text-rose-500 bg-rose-100 rounded-full px-6 py-3 hover:shadow-md transition-shadow duration-300 cursor-pointer">
+                            <button type="button" @click="goToAllCategories" class="text-lg sm:text-xl font-semibold text-rose-500 bg-rose-100 rounded-full px-6 py-3 hover:shadow-md transition-shadow duration-300 cursor-pointer">
                                 Shop Now
-                            </p>
+                            </button>
                         </div>
                     </div>
                     <!-- Mobile Image Slider -->
@@ -213,7 +223,7 @@ onUnmounted(() => {
                 </div>
                 <!-- Desktop Layout (hidden on mobile) -->
                 <div class="hidden lg:block">
-                    <div class="flex flex-col items-start ml-4 md:ml-16 mt-20">
+                    <div class="relative z-30 flex flex-col items-start ml-4 md:ml-16 mt-20">
                         <h2 
                             class="text-4xl font-light text-gray-800 tracking-wider mb-2"
                             data-aos="fade-down"
@@ -236,9 +246,9 @@ onUnmounted(() => {
                             YOU
                         </p>
                         <div>
-                            <p class="text-xl md:text-2xl font-semibold text-rose-500 bg-rose-100 rounded-full px-6 py-2 hover:shadow-md transition-shadow duration-300 cursor-pointer">
+                            <button type="button" @click="goToAllCategories" class="text-xl md:text-2xl font-semibold text-rose-500 bg-rose-100 rounded-full px-6 py-2 hover:shadow-md transition-shadow duration-300 cursor-pointer">
                                 Shop Now
-                            </p>
+                            </button>
                         </div>
                         <!-- Matrix shapes -->
                         <div class="w-3 h-3 bg-rose-500 opacity-25 transform rotate-45 absolute top-20 left-0"></div>
