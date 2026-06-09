@@ -71,8 +71,8 @@ onUnmounted(() => {
         <header class="fixed w-full top-0 z-50">
             <Nav />
         </header>
-        <div class="pt-16 overflow-x-hidden">
-            <div id="home" class="min-h-screen py-4 sm:py-8 px-2 sm:px-4 relative overflow-hidden">
+        <div class="pt-28 lg:pt-20 overflow-x-hidden">
+            <div id="home" class="min-h-screen py-4 sm:py-8 pb-28 sm:pb-10 px-2 sm:px-4 relative overflow-hidden">
                 <!-- Mobile Layout -->
                 <div class="block lg:hidden">
                     <!-- Mobile Hero Content -->

@@ -1,6 +1,6 @@
 <script setup>
 import { useRoute } from 'vue-router'
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch, reactive } from 'vue'
 import { useProductsStore } from '../stores/products.js'
 import { formatPrice } from '/src/utils/priceFormatter.js'
 
@@ -10,6 +10,8 @@ const selectedProduct = ref(null)
 const showContact = ref(false)
 const categoryProducts = ref([])
 const zoomLevel = ref(1)
+const productImageIndex = reactive({})
+const selectedProductImageIndex = ref(0)
 
 const categoryName = computed(() => (route.params.categoryName || 'all').toString().toLowerCase())
 const loading = computed(() => productsStore.loading)
@@ -43,12 +45,14 @@ const getEmailLink = computed(() => {
 
 function showDetails(product) {
   selectedProduct.value = product;
+  selectedProductImageIndex.value = 0;
   showContact.value = false;
   zoomLevel.value = 1;
 }
 
 function showContactModal(product) {
   selectedProduct.value = product;
+  selectedProductImageIndex.value = 0;
   showContact.value = true;
 }
 
@@ -56,6 +60,23 @@ function closeContactModal() {
   showContact.value = false;
   selectedProduct.value = null;
   zoomLevel.value = 1;
+  selectedProductImageIndex.value = 0;
+}
+
+function getProductImages(product) {
+  return product?.image_urls?.length ? product.image_urls : product?.image_url ? [product.image_url] : []
+}
+
+function nextSelectedProductImage() {
+  const images = getProductImages(selectedProduct.value)
+  if (!images.length) return
+  selectedProductImageIndex.value = (selectedProductImageIndex.value + 1) % images.length
+}
+
+function prevSelectedProductImage() {
+  const images = getProductImages(selectedProduct.value)
+  if (!images.length) return
+  selectedProductImageIndex.value = (selectedProductImageIndex.value - 1 + images.length) % images.length
 }
 
 function zoomInImage() {
@@ -70,6 +91,20 @@ function resetZoom() {
   zoomLevel.value = 1
 }
 
+function nextProductImage(product) {
+  const images = getProductImages(product)
+  if (!images.length) return
+  const currentIndex = productImageIndex[product.id] || 0
+  productImageIndex[product.id] = (currentIndex + 1) % images.length
+}
+
+function prevProductImage(product) {
+  const images = getProductImages(product)
+  if (!images.length) return
+  const currentIndex = productImageIndex[product.id] || 0
+  productImageIndex[product.id] = (currentIndex - 1 + images.length) % images.length
+}
+
 function handleImageWheel(event) {
   if (event.deltaY < 0) {
     zoomInImage()
@@ -81,6 +116,7 @@ function handleImageWheel(event) {
 function closeDetailsModal() {
   selectedProduct.value = null
   zoomLevel.value = 1
+  selectedProductImageIndex.value = 0
 }
 
 async function fetchCategoryProducts() {
@@ -112,7 +148,7 @@ onMounted(async () => {
 <template>
   <!-- Your existing template with categoryProducts instead of products -->
   <div class="min-h-screen bg-gray-50">
-    <div class="container mx-auto px-3 sm:px-4 pt-40 md:pt-20 pb-24 md:pb-8">
+    <div class="container mx-auto px-3 sm:px-4 pt-40 md:pt-20 pb-28 md:pb-8">
       <div class="mb-6 md:mb-8">
         <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 text-center px-2 py-4 md:py-0 bg-white md:bg-transparent rounded-lg md:rounded-none shadow-sm md:shadow-none">
           {{ displayCategoryName }}
@@ -146,11 +182,13 @@ onMounted(async () => {
           class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden"
         >
                  <div class="h-48 relative overflow-hidden bg-gray-100 flex items-center justify-center p-2">
+            <button v-if="getProductImages(product).length > 1" @click="prevProductImage(product)" class="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white hover:bg-black/60">‹</button>
             <img 
-              :src="product.image_url || '/src/components/images/placeholder.png'"
+              :src="getProductImages(product)[productImageIndex[product.id] || 0] || product.image_url || '/src/components/images/placeholder.png'"
               :alt="product.name"
               class="max-h-full max-w-full object-contain hover:scale-110 transition-transform duration-300"
             />
+            <button v-if="getProductImages(product).length > 1" @click="nextProductImage(product)" class="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white hover:bg-black/60">›</button>
             <div class="absolute top-2 right-2 flex gap-1">
               <div class="w-3 h-3 rounded-sm bg-rose-400"></div>
               <div class="w-3 h-3 rounded bg-pink-200"></div>
@@ -213,15 +251,17 @@ onMounted(async () => {
               </div>
               <span class="text-sm text-gray-500">{{ zoomLevel.toFixed(2) }}x</span>
             </div>
-            <div class="mb-4 flex items-center justify-center overflow-auto rounded-xl bg-gray-50 p-2 sm:p-3">
+            <div class="mb-4 relative flex items-center justify-center overflow-auto rounded-xl bg-gray-50 p-2 sm:p-3">
+              <button v-if="getProductImages(selectedProduct).length > 1" @click="prevSelectedProductImage" class="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white hover:bg-black/60">‹</button>
               <img 
-                :src="selectedProduct.image_url || '/src/components/images/placeholder.png'" 
+                :src="getProductImages(selectedProduct)[selectedProductImageIndex] || selectedProduct.image_url || '/src/components/images/placeholder.png'" 
                 :alt="selectedProduct.name" 
                 :style="{ transform: `scale(${zoomLevel})` }"
                 class="w-full h-[280px] sm:h-[420px] object-contain rounded-lg transition-transform duration-300 cursor-zoom-in"
                 @wheel.prevent="handleImageWheel"
                 @dblclick="zoomLevel === 1 ? zoomInImage() : resetZoom()"
               >
+              <button v-if="getProductImages(selectedProduct).length > 1" @click="nextSelectedProductImage" class="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white hover:bg-black/60">›</button>
             </div>
             <p class="text-black mb-3 text-sm sm:text-base">{{ selectedProduct.description }}</p>
             <p class="text-rose-400 font-bold text-lg mb-4">Tsh {{ formatPrice(selectedProduct.price) }}</p>

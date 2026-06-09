@@ -11,8 +11,8 @@ const categories = computed(() => productsStore.categories)
 const name = ref('')
 const description = ref('')
 const price = ref('')
-const imageFile = ref(null)
-const imagePreview = ref('')
+const imageFiles = ref([])
+const imagePreviews = ref([])
 const uploadProgress = ref(0)
 const category = ref('')
 const errorMessage = ref('')
@@ -93,56 +93,85 @@ function resetForm() {
   name.value = ''
   description.value = ''
   price.value = ''
-  imageFile.value = null
-  imagePreview.value = ''
+  imageFiles.value = []
+  imagePreviews.value.forEach((preview) => URL.revokeObjectURL(preview.url))
+  imagePreviews.value = []
   uploadProgress.value = 0
   category.value = ''
 }
 
 function handleImageChange(event) {
-  const file = event.target.files?.[0]
-  if (!file) {
-    imageFile.value = null
-    imagePreview.value = ''
+  const files = Array.from(event.target.files || [])
+  if (!files.length) {
+    imageFiles.value = []
+    imagePreviews.value.forEach((preview) => URL.revokeObjectURL(preview.url))
+    imagePreviews.value = []
     return
   }
 
-  if (!file.type.startsWith('image/')) {
-    errorMessage.value = 'Please select a valid image file.'
-    imageFile.value = null
-    imagePreview.value = ''
+  const validFiles = []
+  const validPreviews = []
+
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) {
+      errorMessage.value = 'Please select valid image files.'
+      continue
+    }
+
+    if (file.size > maxImageSize) {
+      errorMessage.value = 'Each image must be smaller than 500KB.'
+      continue
+    }
+
+    validFiles.push(file)
+    validPreviews.push({
+      file,
+      url: URL.createObjectURL(file)
+    })
+  }
+
+  if (!validFiles.length) {
+    imageFiles.value = []
+    imagePreviews.value.forEach((preview) => URL.revokeObjectURL(preview.url))
+    imagePreviews.value = []
     return
   }
 
-  if (file.size > maxImageSize) {
-    errorMessage.value = 'Please choose an image smaller than 500KB.'
-    imageFile.value = null
-    imagePreview.value = ''
-    return
-  }
-
-  imageFile.value = file
-  imagePreview.value = URL.createObjectURL(file)
+  imageFiles.value = validFiles
+  imagePreviews.value.forEach((preview) => URL.revokeObjectURL(preview.url))
+  imagePreviews.value = validPreviews
   errorMessage.value = ''
 }
 
+function removeSelectedImage(index) {
+  const removed = imagePreviews.value.splice(index, 1)[0]
+  if (removed?.url) {
+    URL.revokeObjectURL(removed.url)
+  }
+  imageFiles.value.splice(index, 1)
+}
+
 async function uploadImageFile() {
-  if (!imageFile.value) {
-    throw new Error('Please select an image to upload.')
+  if (!imageFiles.value.length) {
+    throw new Error('Please select at least one image to upload.')
   }
 
-  const file = imageFile.value
   uploadProgress.value = 10
+  const uploadedUrls = []
 
-  const imageUrl = await uploadImageToCloudinary(file)
+  for (const [index, file] of imageFiles.value.entries()) {
+    const imageUrl = await uploadImageToCloudinary(file)
+    uploadedUrls.push(imageUrl)
+    uploadProgress.value = Math.min(100, 10 + Math.round(((index + 1) / imageFiles.value.length) * 90))
+  }
+
   uploadProgress.value = 100
-
-  return imageUrl
+  return uploadedUrls
 }
 
 async function submitProduct() {
-  if (!name.value || !description.value || !price.value || !category.value || !imageFile.value) {
-    errorMessage.value = 'Please complete all required fields and select an image.'
+  if (!name.value || !description.value || !price.value || !category.value || !imageFiles.value.length) {
+    errorMessage.value = 'Please complete all required fields and select at least one image.'
     return
   }
 
@@ -152,13 +181,13 @@ async function submitProduct() {
   uploadProgress.value = 0
 
   try {
-    const uploadedImageUrl = await uploadImageFile()
+    const uploadedImageUrls = await uploadImageFile()
     await productsStore.createProduct({
       sellerId: 'guest',
       name: name.value,
       description: description.value,
       price: price.value,
-      imageUrl: uploadedImageUrl,
+      imageUrls: uploadedImageUrls,
       category: category.value
     })
 
@@ -234,15 +263,20 @@ async function submitProduct() {
           </label>
 
           <label class="block space-y-2 text-sm text-slate-200">
-            <span>Product Image</span>
-            <input type="file" accept="image/*" @change="handleImageChange" class="w-full text-sm text-slate-200 file:mr-4 file:rounded-full file:border-0 file:bg-rose-500 file:px-4 file:py-2 file:text-white file:transition file:hover:bg-rose-600" />
-            <p class="text-xs text-slate-400 mt-1">Maximum file size: 500KB.</p>
+            <span>Product Images</span>
+            <input type="file" multiple accept="image/*" @change="handleImageChange" class="w-full text-sm text-slate-200 file:mr-4 file:rounded-full file:border-0 file:bg-rose-500 file:px-4 file:py-2 file:text-white file:transition file:hover:bg-rose-600" />
+            <p class="text-xs text-slate-400 mt-1">Upload one or more images for different color variants. Maximum file size: 500KB each.</p>
           </label>
         </div>
 
-        <div v-if="imagePreview" class="rounded-3xl border border-slate-700 p-3">
+        <div v-if="imagePreviews.length" class="rounded-3xl border border-slate-700 p-3">
           <p class="text-sm text-slate-300">Image preview</p>
-          <img :src="imagePreview" alt="Selected product" class="mt-3 h-48 w-full rounded-3xl object-cover" />
+          <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div v-for="(preview, index) in imagePreviews" :key="preview.url" class="relative overflow-hidden rounded-3xl border border-slate-700">
+              <img :src="preview.url" alt="Selected product" class="h-32 w-full object-cover" />
+              <button @click="removeSelectedImage(index)" type="button" class="absolute top-2 right-2 rounded-full bg-black/50 px-2 py-1 text-xs text-white transition hover:bg-black/70">Remove</button>
+            </div>
+          </div>
         </div>
 
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

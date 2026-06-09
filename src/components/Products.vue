@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, reactive } from 'vue'
 import { useProductsStore } from '../stores/products.js'
 import { formatPrice } from '/src/utils/priceFormatter.js'
 
@@ -7,6 +7,8 @@ const productsStore = useProductsStore()
 const selectedProduct = ref(null)
 const showContact = ref(false)
 const zoomLevel = ref(1)
+const productImageIndex = reactive({})
+const selectedProductImageIndex = ref(0)
 
 // Use store data
 const products = computed(() => productsStore.products)
@@ -29,10 +31,22 @@ const getEmailLink = computed(() => {
   return 'mailto:fantastchacker@gmail.com';
 })
 
+function getProductImages(product) {
+  if (!product) return []
+  return product.image_urls?.length ? product.image_urls : product.image_url ? [product.image_url] : []
+}
+
+function getProductImage(product) {
+  const images = getProductImages(product)
+  const index = productImageIndex[product.id] ?? 0
+  return images[index] || product.image_url || '/src/components/images/placeholder.png'
+}
+
 function showDetails(product) {
   selectedProduct.value = product;
   showContact.value = false;
-  zoomLevel.value = 1;
+  selectedProductImageIndex.value = 0;
+  productImageIndex[product.id] = 0;
 }
 
 function showContactModal(product) {
@@ -43,7 +57,32 @@ function showContactModal(product) {
 function closeContactModal() {
   showContact.value = false;
   selectedProduct.value = null;
-  zoomLevel.value = 1;
+}
+
+function nextProductImage(product) {
+  const images = getProductImages(product)
+  if (images.length <= 1) return
+  const current = productImageIndex[product.id] ?? 0
+  productImageIndex[product.id] = (current + 1) % images.length
+}
+
+function prevProductImage(product) {
+  const images = getProductImages(product)
+  if (images.length <= 1) return
+  const current = productImageIndex[product.id] ?? 0
+  productImageIndex[product.id] = (current - 1 + images.length) % images.length
+}
+
+function nextSelectedProductImage() {
+  const images = getProductImages(selectedProduct.value)
+  if (images.length <= 1) return
+  selectedProductImageIndex.value = (selectedProductImageIndex.value + 1) % images.length
+}
+
+function prevSelectedProductImage() {
+  const images = getProductImages(selectedProduct.value)
+  if (images.length <= 1) return
+  selectedProductImageIndex.value = (selectedProductImageIndex.value - 1 + images.length) % images.length
 }
 
 function zoomInImage() {
@@ -68,7 +107,7 @@ function handleImageWheel(event) {
 
 function closeDetailsModal() {
   selectedProduct.value = null
-  zoomLevel.value = 1
+  selectedProductImageIndex.value = 0
 }
 
 onMounted(async () => {
@@ -108,7 +147,7 @@ onMounted(async () => {
       <div v-for="product in products" :key="product.id" class="bg-white rounded-lg shadow-md overflow-hidden">
         <div class="w-full h-48 relative overflow-hidden">
           <img 
-            :src="product.image_url || '/src/components/images/placeholder.png'" 
+            :src="getProductImage(product)" 
             :alt="product.name" 
             class="w-full h-full object-contain transition duration-300 hover:scale-110"
           >
@@ -116,6 +155,14 @@ onMounted(async () => {
             <div class="w-3 h-3 rounded-sm bg-rose-400"></div>
             <div class="w-3 h-3 rounded bg-pink-200"></div>
             <div class="w-3 h-3 rotate-45 bg-rose-400"></div>
+          </div>
+          <div v-if="getProductImages(product).length > 1" class="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-2">
+            <button @click.stop="prevProductImage(product)" class="rounded-full bg-black/40 p-2 text-white hover:bg-black/60">
+              ‹
+            </button>
+            <button @click.stop="nextProductImage(product)" class="rounded-full bg-black/40 p-2 text-white hover:bg-black/60">
+              ›
+            </button>
           </div>
         </div>
         <div class="p-3">
@@ -167,15 +214,17 @@ onMounted(async () => {
             </div>
             <span class="text-sm text-gray-500">{{ zoomLevel.toFixed(2) }}x</span>
           </div>
-          <div class="mb-4 flex items-center justify-center overflow-auto rounded-xl bg-gray-50 p-2 sm:p-3">
+          <div class="mb-4 relative flex items-center justify-center overflow-auto rounded-xl bg-gray-50 p-2 sm:p-3">
+            <button v-if="getProductImages(selectedProduct).length > 1" @click="prevSelectedProductImage" class="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white hover:bg-black/60">‹</button>
             <img 
-              :src="selectedProduct.image_url || '/src/components/images/placeholder.png'" 
+              :src="getProductImages(selectedProduct)[selectedProductImageIndex.value] || selectedProduct.image_url || '/src/components/images/placeholder.png'" 
               :alt="selectedProduct.name" 
               :style="{ transform: `scale(${zoomLevel})` }"
               class="w-full h-[280px] sm:h-[420px] object-contain rounded-lg transition-transform duration-300 cursor-zoom-in"
               @wheel.prevent="handleImageWheel"
               @dblclick="zoomLevel === 1 ? zoomInImage() : resetZoom()"
             >
+            <button v-if="getProductImages(selectedProduct).length > 1" @click="nextSelectedProductImage" class="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white hover:bg-black/60">›</button>
           </div>
           <p class="text-black mb-3 text-sm sm:text-base">{{ selectedProduct.description }}</p>
           <p class="text-rose-400 font-bold text-lg mb-4">Tsh {{ formatPrice(selectedProduct.price) }}</p>

@@ -209,11 +209,11 @@ const isCategoryActive = (categorySlug) => {
         
         <!-- Mobile Category Sub-Navigation -->
         <div class="bg-gray-50 border-t border-gray-200 px-4 py-3">
-          <div class="flex space-x-1 overflow-x-auto scrollbar-hide">
+          <div class="flex flex-wrap gap-2">
             <!-- All Categories -->
             <router-link 
               to="/Category"
-              class="flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300"
+              class="px-4 py-2 rounded-full text-sm font-medium transition-all duration-300"
               :class="route.path === '/Category' ? 'bg-rose-500 text-white shadow-md' : 'bg-white text-gray-700 hover:bg-rose-100 hover:text-rose-600'"
             >
               All Categories
@@ -224,7 +224,7 @@ const isCategoryActive = (categorySlug) => {
               v-for="category in categories"
               :key="category.id"
               :to="`/category/${category.slug}`"
-              class="flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300"
+              class="px-4 py-2 rounded-full text-sm font-medium transition-all duration-300"
               :class="isCategoryActive(category.slug) ? 'bg-rose-500 text-white shadow-md' : 'bg-white text-gray-700 hover:bg-rose-100 hover:text-rose-600'"
             >
               {{ category.name }}

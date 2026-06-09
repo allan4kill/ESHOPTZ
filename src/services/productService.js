@@ -79,14 +79,23 @@ async function ensureRemoteProducts() {
 export async function addProduct(productData) {
   await ensureRemoteProducts()
 
-  const imageUrl = String(productData.imageUrl || '').trim()
-  if (!imageUrl) {
-    throw new Error('Product image URL is required.')
+  const rawUrls = Array.isArray(productData.imageUrls)
+    ? productData.imageUrls
+    : [productData.imageUrl]
+
+  const imageUrls = rawUrls
+    .map(url => String(url || '').trim())
+    .filter(Boolean)
+
+  if (imageUrls.length === 0) {
+    throw new Error('At least one product image URL is required.')
   }
 
-  if (!/^https:\/\/.*cloudinary\.com\//.test(imageUrl)) {
-    throw new Error('Product image must be uploaded to Cloudinary.')
-  }
+  imageUrls.forEach((imageUrl) => {
+    if (!/^https:\/\/.*cloudinary\.com\//.test(imageUrl)) {
+      throw new Error('Product images must be uploaded to Cloudinary.')
+    }
+  })
 
   const newProduct = {
     id: `p_${Date.now()}`,
@@ -94,7 +103,8 @@ export async function addProduct(productData) {
     name: productData.name.trim(),
     description: productData.description.trim(),
     price: Number(productData.price) || 0,
-    image_url: imageUrl,
+    image_url: imageUrls[0],
+    image_urls: imageUrls,
     category: productData.category.trim(),
     category_id: normalizeSlug(productData.category),
     category_slug: normalizeSlug(productData.category),
@@ -123,13 +133,14 @@ export async function deleteProduct(productId) {
   const products = await getAllProducts()
   const product = products.find(item => item.id === productId)
 
-  if (product?.image_url) {
+  const imagesToDelete = product?.image_urls || (product?.image_url ? [product.image_url] : [])
+  await Promise.all(imagesToDelete.map(async (imageUrl) => {
     try {
-      await deleteImageFromCloudinary(product.image_url)
+      await deleteImageFromCloudinary(imageUrl)
     } catch (error) {
-      console.warn('Cloudinary cleanup failed for product:', productId, error)
+      console.warn('Cloudinary cleanup failed for product:', productId, imageUrl, error)
     }
-  }
+  }))
 
   await deleteProductById(productId)
 }
@@ -140,13 +151,14 @@ export async function deleteCategory(categoryId) {
   const toDelete = products.filter(product => product.category_id === normalized || product.category_slug === normalized)
 
   await Promise.all(toDelete.map(async product => {
-    if (product?.image_url) {
+    const imagesToDelete = product?.image_urls || (product?.image_url ? [product.image_url] : [])
+    await Promise.all(imagesToDelete.map(async (imageUrl) => {
       try {
-        await deleteImageFromCloudinary(product.image_url)
+        await deleteImageFromCloudinary(imageUrl)
       } catch (error) {
-        console.warn('Cloudinary cleanup failed for category product:', product.id, error)
+        console.warn('Cloudinary cleanup failed for category product:', product.id, imageUrl, error)
       }
-    }
+    }))
     return deleteProductById(product.id)
   }))
 }
