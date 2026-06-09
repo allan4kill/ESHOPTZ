@@ -26,13 +26,23 @@ const displayCategoryName = computed(() => {
 })
 
 // Rest of your computed properties and methods remain the same
-const getWhatsAppLink = computed(() => {
-  if (selectedProduct.value) {
-    const message = `Hello, I'm interested in buying ${selectedProduct.value.name} (ID: ${selectedProduct.value.id}) for Tsh ${selectedProduct.value.price}`;
-    return `https://wa.me/+255710629596?text=${encodeURIComponent(message)}`;
+function getProductImageUrl(product) {
+  const images = getProductImages(product)
+  return images[0] || product?.image_url || ''
+}
+
+function buildWhatsAppLink(product) {
+  if (!product) {
+    return 'https://wa.me/+255615819837'
   }
-  return 'https://wa.me/+255710629596';
-})
+
+  const productImageUrl = getProductImageUrl(product)
+  const priceText = product.price != null ? `for Tsh ${formatPrice(product.price)}` : ''
+  const message = `Hello, I'm interested in buying ${product.name} (ID: ${product.id}) ${priceText}. Product image: ${productImageUrl}`
+  return `https://wa.me/+255615819837?text=${encodeURIComponent(message)}`
+}
+
+const getWhatsAppLink = computed(() => buildWhatsAppLink(selectedProduct.value))
 
 const getEmailLink = computed(() => {
   if (selectedProduct.value) {
@@ -42,6 +52,11 @@ const getEmailLink = computed(() => {
   }
   return 'mailto:fantastchacker@gmail.com';
 })
+
+function buyViaWhatsApp(product) {
+  const url = buildWhatsAppLink(product)
+  window.open(url, '_blank')
+}
 
 function showDetails(product) {
   selectedProduct.value = product;
@@ -203,11 +218,8 @@ onMounted(async () => {
             <p class="text-black text-sm mb-2 line-clamp-2">
               {{ product.description }}
             </p>
-                        
             <div class="flex justify-between items-center">
-              <span class="text-rose-400 font-bold text-sm">
-                Tsh {{ formatPrice(product.price) }}
-              </span>
+              <span class="text-rose-500 font-bold text-sm">Tsh {{ formatPrice(product.price) }}</span>
               <div class="flex gap-1">
                 <button @click="showDetails(product)" class="bg-pink-400 hover:bg-pink-500 text-white px-2 py-1 rounded-md transition duration-300 text-sm">
                   Details
@@ -273,26 +285,55 @@ onMounted(async () => {
       </div>
 
       <!-- Contact Modal -->
-      <div v-if="showContact" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white p-4 rounded-lg max-w-sm w-full">
-          <h2 class="text-xl font-bold text-rose-400 mb-3">Contact Us to Buy</h2>
-          <div class="space-y-4">
-            <a :href="getWhatsAppLink" target="_blank" class="flex items-center gap-2 text-green-600 hover:text-green-700">
-              <i class="fas fa-whatsapp text-xl"></i>
-              WhatsApp: +255 710 629 596
-            </a>
-            <a :href="getEmailLink" class="flex items-center gap-2 text-blue-600 hover:text-blue-700">
-              <i class="fas fa-envelope text-xl"></i>
-              Email: fantastchacker@gmail.com
-            </a>
-            <a href="tel:+255710629596" class="flex items-center gap-2 text-gray-600 hover:text-gray-700">
-              <i class="fas fa-phone text-xl"></i>
-              Phone: +255 710 629 596
-            </a>
+      <div v-if="showContact" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-[28px] shadow-2xl w-full max-w-xl max-h-[65vh] overflow-x-hidden overflow-y-auto border border-rose-100">
+          <div class="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-3 p-3 sm:p-4">
+            <div class="rounded-3xl overflow-hidden bg-gradient-to-br from-rose-50 via-white to-pink-50 border border-rose-100 shadow-inner">
+              <img
+                :src="getProductImages(selectedProduct)[0] || selectedProduct.image_url || '/src/components/images/placeholder.png'"
+                :alt="selectedProduct.name"
+                class="w-full h-[160px] sm:h-[200px] object-contain bg-white p-3"
+              />
+            </div>
+            <div class="flex flex-col justify-between gap-5">
+              <div class="space-y-4">
+                <div class="flex items-center justify-between gap-2">
+                  <div>
+                    <p class="text-[10px] uppercase tracking-[0.3em] text-rose-500 font-bold">Ready to order</p>
+                    <h2 class="text-xl font-extrabold text-slate-900">{{ selectedProduct.name }}</h2>
+                  </div>
+                  <span class="inline-flex items-center gap-2 rounded-full bg-rose-100 px-2.5 py-1 text-sm font-semibold text-rose-600">
+                    <i class="fas fa-tag"></i>
+                    Tsh {{ formatPrice(selectedProduct.price) }}
+                  </span>
+                </div>
+                <p class="text-sm leading-5 text-slate-600">{{ selectedProduct.description || 'A compact product card with premium details for quick ordering.' }}</p>
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="rounded-3xl border border-slate-100 bg-slate-50 p-3">
+                    <p class="text-[10px] uppercase text-slate-500">Condition</p>
+                    <p class="mt-1 font-semibold text-slate-900">New</p>
+                  </div>
+                  <div class="rounded-3xl border border-slate-100 bg-slate-50 p-3">
+                    <p class="text-[10px] uppercase text-slate-500">Category</p>
+                    <p class="mt-1 font-semibold text-slate-900">{{ selectedProduct.category || 'General' }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="space-y-2">
+                <a :href="getWhatsAppLink" target="_blank" class="inline-flex w-full justify-center items-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-2 text-white font-semibold shadow-lg shadow-rose-500/20 transition duration-300 hover:scale-[1.01]">
+                  <i class="fas fa-whatsapp"></i>
+                  WhatsApp
+                </a>
+                <a :href="getEmailLink" class="inline-flex w-full justify-center items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-slate-700 font-semibold transition duration-300 hover:bg-slate-50">
+                  <i class="fas fa-envelope"></i>
+                  Email
+                </a>
+                <button @click="closeContactModal" class="inline-flex w-full justify-center rounded-full bg-slate-100 px-4 py-2 text-slate-700 font-semibold transition duration-300 hover:bg-slate-200">
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
-          <button @click="closeContactModal" class="mt-4 bg-rose-400 hover:bg-rose-500 text-white px-3 py-1.5 rounded-md transition duration-300 text-sm">
-            Close
-          </button>
         </div>
       </div>
     </div>
