@@ -145,6 +145,23 @@ export async function deleteProduct(productId) {
   await deleteProductById(productId)
 }
 
+export async function updateProduct(productId, updates) {
+  const products = await getAllProducts()
+  const existingProduct = products.find(item => item.id === productId)
+  if (!existingProduct) {
+    throw new Error('Product not found.')
+  }
+
+  const updatedProduct = {
+    ...existingProduct,
+    ...updates,
+    updatedAt: new Date().toISOString()
+  }
+
+  await saveProduct(updatedProduct)
+  return updatedProduct
+}
+
 export async function deleteCategory(categoryId) {
   const products = await getAllProducts()
   const normalized = normalizeSlug(categoryId)

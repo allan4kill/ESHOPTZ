@@ -40,6 +40,7 @@ const deleteTargetId = ref('')
 const deleteTargetName = ref('')
 const deleteModalMessage = ref('')
 const deleteLoading = ref(false)
+const statusLoading = ref(false)
 
 const openDeleteModal = (type, id, name) => {
   deleteTargetType.value = type
@@ -203,6 +204,23 @@ async function submitProduct() {
     uploadProgress.value = 0
   }
 }
+
+async function toggleProductStatus(product) {
+  statusLoading.value = true
+  errorMessage.value = ''
+
+  try {
+    const targetStatus = product.status === 'soldout' ? 'active' : 'soldout'
+    await productsStore.updateProduct(product.id, { status: targetStatus })
+    await productsStore.fetchProducts()
+    await productsStore.fetchCategories()
+  } catch (error) {
+    console.error('Unable to update product status:', error)
+    errorMessage.value = error.message || 'Unable to update product status. Please try again.'
+  } finally {
+    statusLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -331,11 +349,22 @@ async function submitProduct() {
                 <div class="flex items-start gap-3">
                   <img :src="product.image_url || '/src/components/images/placeholder.png'" :alt="product.name" class="h-20 w-20 rounded-3xl object-cover border border-slate-700" />
                   <div>
-                    <p class="font-semibold text-white">{{ product.name }}</p>
+                    <div class="flex items-center gap-2">
+                      <p class="font-semibold text-white">{{ product.name }}</p>
+                      <span v-if="product.status === 'soldout'" class="rounded-full bg-rose-500 px-2 py-1 text-[10px] uppercase tracking-[0.3em] text-white">Sold Out</span>
+                      <span v-else class="rounded-full bg-emerald-500 px-2 py-1 text-[10px] uppercase tracking-[0.3em] text-white">Active</span>
+                    </div>
                     <p class="text-slate-400 text-sm">{{ product.category }} • Tsh {{ formatPrice(product.price) }}</p>
                   </div>
                 </div>
-                <button @click="openDeleteModal('product', product.id, product.name)" type="button" class="rounded-3xl bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-600">Delete product</button>
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <button @click="toggleProductStatus(product)" type="button" :disabled="statusLoading" class="rounded-3xl bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60">
+                    {{ product.status === 'soldout' ? 'Mark Active' : 'Mark Sold Out' }}
+                  </button>
+                  <button @click="openDeleteModal('product', product.id, product.name)" type="button" class="rounded-3xl bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-600">
+                    Delete product
+                  </button>
+                </div>
               </div>
             </div>
           </div>

@@ -113,6 +113,21 @@ export const useProductsStore = defineStore('products', {
       }
     },
 
+    async updateProduct(productId, updates) {
+      this.loading = true
+      this.error = null
+      try {
+        await productService.updateProduct(productId, updates)
+        await this.refreshData()
+      } catch (error) {
+        this.error = 'Failed to update product'
+        console.error('Error updating product:', error)
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
     async refreshData() {
       await Promise.all([
         this.fetchProducts(),

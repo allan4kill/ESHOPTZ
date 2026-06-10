@@ -209,6 +209,9 @@ onMounted(async () => {
               <div class="w-3 h-3 rounded bg-pink-200"></div>
               <div class="w-3 h-3 rotate-45 bg-rose-400"></div>
             </div>
+            <div v-if="product.status === 'soldout'" class="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-semibold uppercase tracking-[0.2em]">
+              Sold Out
+            </div>
           </div>
                     
           <div class="p-3">
@@ -224,8 +227,8 @@ onMounted(async () => {
                 <button @click="showDetails(product)" class="bg-pink-400 hover:bg-pink-500 text-white px-2 py-1 rounded-md transition duration-300 text-sm">
                   Details
                 </button>
-                <button @click="showContactModal(product)" class="bg-rose-400 hover:bg-rose-500 text-white px-2 py-1 rounded-md transition duration-300 text-sm">
-                  Buy
+                <button @click="showContactModal(product)" :disabled="product.status === 'soldout'" class="bg-rose-400 hover:bg-rose-500 text-white px-2 py-1 rounded-md transition duration-300 text-sm disabled:cursor-not-allowed disabled:opacity-50">
+                  {{ product.status === 'soldout' ? 'Sold Out' : 'Buy' }}
                 </button>
               </div>
             </div>
